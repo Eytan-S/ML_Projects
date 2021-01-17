@@ -8,8 +8,9 @@ import matplotlib.image as mpimg
 
 # Get data from cifar10
 
-(x_train, _), (x_test, _) = tf.keras.datasets.cifar10.load_data()
-
+(x_train_full, y_train), (_, _) = tf.keras.datasets.cifar10.load_data()
+x_train = x_train_full
+#x_train = x_train_full[y_train[:,0]==1]
 # Pre-proccess  data
 
 x_train = x_train.reshape(x_train.shape[0],-1)
@@ -35,7 +36,8 @@ def disc():
     model.add(keras.layers.Dense(512))
     model.add(keras.layers.LeakyReLU())
     model.add(keras.layers.Dropout(rate=0.5))
-    model.add(keras.layers.Dense(1))
+    model.add(keras.layers.Dense(1, activation='sigmoid'))
+    
 
     model.optimizer = keras.optimizers.Adam(learning_rate=0.0001)
     
@@ -69,7 +71,7 @@ def gen(noise_size):
 
 
 # Set hyper-parameters
-num_epochs = 100
+num_epochs = 500
 num_iterations = 500
 batch_size = 100
 noise_size = 100
@@ -99,7 +101,7 @@ for epoch in range(num_epochs):
                 disc_fake_images = G(disc_noise)
                 fake_results = D(disc_fake_images)
                 
-                disc_loss = (keras.losses.binary_crossentropy(np.ones((batch_size,1)), real_results, from_logits='true') + keras.losses.binary_crossentropy(np.zeros((batch_size,1)), fake_results, from_logits='true')) / 2
+                disc_loss = (keras.losses.binary_crossentropy(np.ones((batch_size,1)), real_results) + keras.losses.binary_crossentropy(np.zeros((batch_size,1)), fake_results)) / 2
                 disc_grads = disc_tape.gradient(disc_loss, D.trainable_variables)
                 
                 D.optimizer.apply_gradients(zip(disc_grads, D.trainable_variables))
@@ -110,7 +112,7 @@ for epoch in range(num_epochs):
             gen_fake_images = G(gen_noise)
             gen_fake_results = D(gen_fake_images)
             
-            gen_loss = keras.losses.binary_crossentropy(np.ones((batch_size, 1)), gen_fake_results, from_logits='true')
+            gen_loss = keras.losses.binary_crossentropy(np.ones((batch_size, 1)), gen_fake_results)
             gen_grads = gen_tape.gradient(gen_loss, G.trainable_variables)
             
             G.optimizer.apply_gradients(zip(gen_grads, G.trainable_variables))
@@ -118,7 +120,7 @@ for epoch in range(num_epochs):
             print("Epoch: %d, Batch: %d, D loss: %s, G loss: %s" % (epoch, batch, np.mean(disc_loss.numpy()), np.mean(gen_loss.numpy())))
             noise = tf.random.uniform((1, noise_size), minval=0, maxval=1)
             img = G(noise)
-            np_img = ((img.numpy().reshape(32,32,3) + 1) / 2 * 255).astype(int)
+            np_img = ((img.numpy().reshape(32,32,3) + 1)  * 128).astype(int)
             #plt.imshow(np_img)
             images.append(np_img)
             disc_losses.append(np.mean(disc_loss.numpy()))
