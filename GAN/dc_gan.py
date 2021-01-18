@@ -13,7 +13,6 @@ x_train = x_train_full
 #x_train = x_train_full[y_train[:,0]==1]
 # Pre-proccess  data
 
-x_train = x_train.reshape(x_train.shape[0],-1)
 x_train = x_train.astype(np.float32)/255.0
 x_train = x_train * 2 -1
 
@@ -27,15 +26,16 @@ def disc():
     """
     
     model = keras.Sequential()
-    model.add(keras.layers.Dense(512, input_shape=(32*32*3,)))
+    model.add(keras.layers.Conv2D(filters=64, kernel_size=3, strides=(2,2), padding='same', input_shape=(32,32,3)))
     model.add(keras.layers.LeakyReLU())
     model.add(keras.layers.Dropout(rate=0.5))
-    model.add(keras.layers.Dense(512))
+    model.add(keras.layers.Conv2D(filters=128, kernel_size=3, strides=(2,2), padding='same'))
     model.add(keras.layers.LeakyReLU())
     model.add(keras.layers.Dropout(rate=0.5))
-    model.add(keras.layers.Dense(512))
+    model.add(keras.layers.Conv2D(filters=256, kernel_size=3, strides=(2,2), padding='same'))
     model.add(keras.layers.LeakyReLU())
     model.add(keras.layers.Dropout(rate=0.5))
+    model.add(keras.layers.Flatten())
     model.add(keras.layers.Dense(1, activation='sigmoid'))
     
 
@@ -54,16 +54,14 @@ def gen(noise_size):
     """
 
     model = keras.Sequential()
-    model.add(keras.layers.Dense(1024, input_shape=(noise_size,)))
-    model.add(keras.layers.LeakyReLU())
+    model.add(keras.layers.Dense(4 * 4 * 512, input_shape=(noise_size,)))
+    model.add(keras.layers.Reshape((4, 4, 512)))
     model.add(keras.layers.BatchNormalization(momentum=0.8))
-    model.add(keras.layers.Dense(1024))
-    model.add(keras.layers.LeakyReLU())
+    model.add(keras.layers.Conv2DTranspose(filters=256, kernel_size=3, strides=2, padding='same', activation='relu')) # 8x8
     model.add(keras.layers.BatchNormalization(momentum=0.8))
-    model.add(keras.layers.Dense(1024))
-    model.add(keras.layers.LeakyReLU())
+    model.add(keras.layers.Conv2DTranspose(filters=128, kernel_size=3, strides=2, padding='same', activation='relu')) # 16x16
     model.add(keras.layers.BatchNormalization(momentum=0.8))
-    model.add(keras.layers.Dense(32*32*3, activation='tanh'))
+    model.add(keras.layers.Conv2DTranspose(filters=3, kernel_size=3, strides=2, padding='same', activation='tanh')) # 32x32
              
     model.optimizer = keras.optimizers.Adam(learning_rate=0.0001)
     
